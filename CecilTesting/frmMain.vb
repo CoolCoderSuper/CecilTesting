@@ -1,4 +1,5 @@
 ﻿Imports ICSharpCode.TextEditor.Document
+Imports Microsoft.CodeAnalysis
 Imports Microsoft.CodeAnalysis.VisualBasic
 Imports Mono.Cecil
 
@@ -17,29 +18,28 @@ Public Class frmMain
 
     Private Sub tvClasses_NodeMouseDoubleClick(sender As Object, e As TreeNodeMouseClickEventArgs) Handles tvClasses.NodeMouseDoubleClick
         If e.Node.Tag IsNot Nothing Then
-            Dim code As String = ""
+            Dim tree As SyntaxTree
             Dim mDef As MethodDefinition = TryCast(e.Node.Tag, MethodDefinition)
             If mDef IsNot Nothing Then
-                code = manager.DecompileMethod(mDef)
+                tree = manager.DecompileMethodAsSyntaxTree(mDef)
             End If
             Dim tDef As TypeDefinition = TryCast(e.Node.Tag, TypeDefinition)
             If tDef IsNot Nothing Then
-                code = manager.DecompileType(tDef)
+                tree = manager.DecompileTypeAsSyntaxTree(tDef)
             End If
             Dim pDef As PropertyDefinition = TryCast(e.Node.Tag, PropertyDefinition)
             If pDef IsNot Nothing Then
-                code = manager.DecompileProperty(pDef)
+                tree = manager.DecompilePropertyAsSyntaxTree(pDef)
             End If
             Dim fDef As FieldDefinition = TryCast(e.Node.Tag, FieldDefinition)
             If fDef IsNot Nothing Then
-                code = manager.DecompileField(fDef)
+                tree = manager.DecompileFieldAsSyntaxTree(fDef)
             End If
             Dim eDef As EventDefinition = TryCast(e.Node.Tag, EventDefinition)
             If eDef IsNot Nothing Then
-                code = manager.DecompileEvent(eDef)
+                tree = manager.DecompileEventAsSyntaxTree(eDef)
             End If
-            code = SyntaxFactory.ParseSyntaxTree(code).GetRoot.NormalizeWhitespace(True).ToFullString
-            tecCode.Text = code
+            tecCode.Text = tree.GetRoot.NormalizeWhitespace(True).ToFullString
         End If
     End Sub
 

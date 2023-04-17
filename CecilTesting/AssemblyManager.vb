@@ -6,7 +6,6 @@ Imports Mono.Cecil.Cil
 'TODO: Look into using dnLib
 Public Class AssemblyManager
 
-    Dim _stream As FileStream
     ReadOnly _showAll As Boolean = False
 
 #Region "UI"
@@ -41,8 +40,7 @@ Public Class AssemblyManager
 
     Public Sub LoadAssembly(path As String, tv As TreeView)
         tv.Nodes.Clear()
-        _stream = New FileStream(path, FileMode.Open, FileAccess.Read, FileShare.ReadWrite)
-        Dim modDef As ModuleDefinition = ModuleDefinition.ReadModule(_stream)
+        Dim modDef As ModuleDefinition = ModuleDefinition.ReadModule(path)
         For Each tDef As TypeDefinition In modDef.Types
             Dim names As String() = tDef.FullName.Split(".")
             Dim node As TreeNode = Nothing
@@ -68,95 +66,6 @@ Public Class AssemblyManager
 
 #End Region
 
-    'Public Shared Sub UpdateMethod(il As String, mDef As MethodDefinition)
-    '    Dim ilProcessor As ILProcessor = mDef.Body.GetILProcessor()
-    '    ilProcessor.Clear()
-    '    Dim lines As String() = il.Split(vbCrLf)
-    '    For Each line As String In lines
-    '        Dim parts As String() = line.Split(" ")
-    '        Dim offset As String = parts(0)
-    '        Dim opCode As String = parts(1)
-    '        Dim operand As String = String.Join(" "c, parts.Skip(2))
-    '        Dim instruction As Instruction = CreateInstruction(opCode)
-    '        ilProcessor.Append(instruction)
-    '    Next
-    'End Sub
-
-    'Private Shared Function CreateInstruction(opCode As String) As Instruction
-    '    Dim ins As Instruction
-    '    Select Case opCode
-    '        Case "add"
-    '        Case "add.ovf"
-    '        Case "add.ovf.un"
-    '        Case "and"
-    '        Case "arglist"
-    '        Case "beq"
-    '        Case "beq.s"
-    '        Case "bge"
-    '        Case "bge.s"
-    '        Case "bge.un"
-    '        Case "bge.un.s"
-    '        Case "bgt"
-    '        Case "bgt.s"
-    '        Case "bgt.un"
-    '        Case "bgt.un.s"
-    '        Case "ble"
-    '        Case "ble.s"
-    '        Case "ble.un"
-    '        Case "ble.un.s"
-    '        Case "blt"
-    '        Case "blt.s"
-    '        Case "blt.un"
-    '        Case "blt.un.s"
-    '        Case "bne.un"
-    '        Case "bne.un.s"
-    '        Case "br"
-    '        Case "br.s"
-    '        Case "break"
-    '        Case "brfalse"
-    '        Case "brfalse.s"
-    '        Case "brinst"
-    '        Case "brinst.s"
-    '        Case "brnull"
-    '        Case "brnull.s"
-    '        Case "brtrue"
-    '        Case "brtrue.s"
-    '        Case "brzero"
-    '        Case "brzero.s"
-    '        Case "call"
-    '        Case "call.i"
-    '        Case "callvirt"
-    '        Case "castclass"
-    '        Case "ceq"
-    '        Case "cgt"
-    '        Case "cgt.un"
-    '        Case "ckfinite"
-    '        Case "clt"
-    '        Case "clt.un"
-    '        Case "constrained."
-    '        Case "conv.i"
-    '        Case "conv.i1"
-    '        Case "conv.i2"
-    '        Case "conv.i4"
-    '        Case "conv.i8"
-    '        Case "conv.ovf.i"
-    '        Case "conv.ovf.i.un"
-    '        Case "conv.ovf.i1"
-    '        Case "conv.ovf.i1.un"
-    '        Case "conv.ovf.i2"
-    '        Case "conv.ovf.i2.un"
-    '        Case "conv.ovf.i4"
-    '        Case "conv.ovf.i4.un"
-    '        Case "conv.ovf.i8"
-    '        Case "conv.ovf.i8.un"
-    '        Case "conv.ovf.u"
-    '        Case "conv.ovf.u.un"
-    '        Case Else
-    '            ins = Instruction.Create(OpCodes.Nop)
-    '    End Select
-    '    Return ins
-    'End Function
-
     Public Function GetIL(mDef As MethodDefinition) As String
         Dim sb As New StringBuilder
         For Each i As Instruction In mDef.Body.Instructions
@@ -166,7 +75,7 @@ Public Class AssemblyManager
     End Function
     'TODO: Modifiers
 
-    Public Function DecompileType(tDef As TypeDefinition) As String
+    Public Function DecompileTypeAsString(tDef As TypeDefinition) As String
         Dim sb As New StringBuilder
         Dim classDefiner As String
         With tDef
@@ -213,19 +122,19 @@ Public Class AssemblyManager
         Else
             sb.AppendLine()
             For Each mDef As MethodDefinition In tDef.Methods.Where(Function(x) _showAll OrElse Not x.IsGetter AndAlso Not x.IsSetter AndAlso Not x.IsAddOn AndAlso Not x.IsRemoveOn)
-                sb.AppendLine(DecompileMethod(mDef))
+                sb.AppendLine(DecompileMethodAsString(mDef))
             Next
             For Each pDef As PropertyDefinition In tDef.Properties
-                sb.AppendLine(DecompileProperty(pDef))
+                sb.AppendLine(DecompilePropertyAsString(pDef))
             Next
             For Each fDef As FieldDefinition In tDef.Fields
-                sb.AppendLine(DecompileField(fDef))
+                sb.AppendLine(DecompileFieldAsString(fDef))
             Next
             For Each eDef As EventDefinition In tDef.Events
-                sb.AppendLine(DecompileEvent(eDef))
+                sb.AppendLine(DecompileEventAsString(eDef))
             Next
             For Each tDef2 As TypeDefinition In tDef.NestedTypes
-                sb.AppendLine(DecompileType(tDef2))
+                sb.AppendLine(DecompileTypeAsString(tDef2))
             Next
         End If
         sb.AppendLine($"End {classDefiner}")
@@ -236,7 +145,11 @@ Public Class AssemblyManager
         Return sb.ToString
     End Function
 
-    Public Function DecompileMethod(mDef As MethodDefinition) As String
+    Public Function DecompileTypeAsSyntaxTree(tDef As TypeDefinition) As Microsoft.CodeAnalysis.SyntaxTree
+        Return Microsoft.CodeAnalysis.VisualBasic.SyntaxFactory.ParseSyntaxTree(DecompileTypeAsString(tDef))
+    End Function
+
+    Public Function DecompileMethodAsString(mDef As MethodDefinition) As String
         Dim sb As New StringBuilder
         DecompileAttributes(mDef.CustomAttributes, sb)
         Dim isSub As Boolean = mDef.ReturnType.FullName = "System.Void"
@@ -265,17 +178,25 @@ Public Class AssemblyManager
             sb.AppendLine($" As {methodType}")
         End If
         If Not mDef.DeclaringType.IsInterface Then
-            sb.Append(DecompileMethodBody(mDef.Body))
+            sb.Append(DecompileMethodBodyAsString(mDef.Body))
             sb.AppendLine($"End {methodDefiner}")
         End If
         Return sb.ToString()
     End Function
 
-    Public Function DecompileMethodBody(mBody As MethodBody) As String
+    Public Function DecompileMethodAsSyntaxTree(mDef As MethodDefinition) As Microsoft.CodeAnalysis.SyntaxTree
+        Return Microsoft.CodeAnalysis.VisualBasic.SyntaxFactory.ParseSyntaxTree(DecompileMethodAsString(mDef))
+    End Function
+
+    Public Function DecompileMethodBodyAsString(mBody As MethodBody) As String
         Return ""
     End Function
 
-    Public Function DecompileProperty(pDef As PropertyDefinition) As String
+    Public Function DecompileMethodBodyAsSyntaxTree(mBody As MethodBody) As Microsoft.CodeAnalysis.SyntaxTree
+        Return Microsoft.CodeAnalysis.VisualBasic.SyntaxFactory.ParseSyntaxTree(DecompileMethodBodyAsString(mBody))
+    End Function
+
+    Public Function DecompilePropertyAsString(pDef As PropertyDefinition) As String
         Dim sb As New StringBuilder
         DecompileAttributes(pDef.CustomAttributes, sb)
         sb.Append($"Property {pDef.Name}")
@@ -305,13 +226,13 @@ Public Class AssemblyManager
             If pDef.GetMethod IsNot Nothing Then
                 DecompileAttributes(pDef.GetMethod.CustomAttributes, sb)
                 sb.AppendLine("Get")
-                sb.AppendLine(DecompileMethodBody(pDef.GetMethod.Body))
+                sb.AppendLine(DecompileMethodBodyAsString(pDef.GetMethod.Body))
                 sb.AppendLine("End Get")
             End If
             If pDef.SetMethod IsNot Nothing Then
                 DecompileAttributes(pDef.GetMethod.CustomAttributes, sb)
                 sb.AppendLine("Set")
-                sb.AppendLine(DecompileMethodBody(pDef.SetMethod.Body))
+                sb.AppendLine(DecompileMethodBodyAsString(pDef.SetMethod.Body))
                 sb.AppendLine("End Set")
             End If
             sb.AppendLine("End Property")
@@ -319,14 +240,22 @@ Public Class AssemblyManager
         Return sb.ToString()
     End Function
 
-    Public Function DecompileField(fDef As FieldDefinition) As String
+    Public Function DecompilePropertyAsSyntaxTree(pDef As PropertyDefinition) As Microsoft.CodeAnalysis.SyntaxTree
+        Return Microsoft.CodeAnalysis.VisualBasic.SyntaxFactory.ParseSyntaxTree(DecompilePropertyAsString(pDef))
+    End Function
+
+    Public Function DecompileFieldAsString(fDef As FieldDefinition) As String
         Dim sb As New StringBuilder
         DecompileAttributes(fDef.CustomAttributes, sb)
         sb.AppendLine($"Dim {fDef.Name} As {GetFriendlyName(fDef.FieldType)}")
         Return sb.ToString()
     End Function
 
-    Public Function DecompileEvent(eDef As EventDefinition) As String
+    Public Function DecompileFieldAsSyntaxTree(fDef As FieldDefinition) As Microsoft.CodeAnalysis.SyntaxTree
+        Return Microsoft.CodeAnalysis.VisualBasic.SyntaxFactory.ParseSyntaxTree(DecompileFieldAsString(fDef))
+    End Function
+
+    Public Function DecompileEventAsString(eDef As EventDefinition) As String
         'TODO: Test
         Dim sb As New StringBuilder
         DecompileAttributes(eDef.CustomAttributes, sb)
@@ -342,6 +271,10 @@ Public Class AssemblyManager
             sb.AppendLine("End Event")
         End If
         Return "" 'sb.ToString()
+    End Function
+
+    Public Function DecompileEventAsSyntaxTree(eDef As EventDefinition) As Microsoft.CodeAnalysis.SyntaxTree
+        Return Microsoft.CodeAnalysis.VisualBasic.SyntaxFactory.ParseSyntaxTree(DecompileEventAsString(eDef))
     End Function
 
     Private Sub DecompileAttributes(customAttributes As Mono.Collections.Generic.Collection(Of CustomAttribute), sb As StringBuilder)
