@@ -1,6 +1,9 @@
+Imports System.IO
+Imports Avalonia
 Imports Avalonia.Controls
 Imports Avalonia.Interactivity
 Imports Avalonia.Markup.Xaml
+Imports Avalonia.Platform.Storage
 Imports Microsoft.CodeAnalysis
 Imports Mono.Cecil
 
@@ -10,6 +13,8 @@ Partial Public Class MainWindow
 #Region "Components"
     Private WithEvents tvAssembly As TreeView
     Private WithEvents txtCode As TextBox
+    Private WithEvents btnOpen As MenuItem
+    Private WithEvents btnExit As MenuItem
 
     Public Sub New()
         InitializeComponent()
@@ -19,14 +24,19 @@ Partial Public Class MainWindow
         AvaloniaXamlLoader.Load(Me)
         tvAssembly = FindControl(Of TreeView)("tvAssembly")
         txtCode = FindControl(Of TextBox)("txtCode")
+        btnOpen = FindControl(Of MenuItem)("btnOpen")
+        btnExit = FindControl(Of MenuItem)("btnExit")
     End Sub
 
 #End Region
+
     Dim manager As AssemblyManager
+    Dim path As String = "C:\CodingCool\Code\Projects\CecilTesting\VBTest\bin\Debug\net8.0\VBTest.dll"
 
     Private Sub MainWindow_Loaded(sender As Object, e As RoutedEventArgs) Handles Me.Loaded
+        If Not File.Exists(path) Then Return
         manager = New AssemblyManager
-        tvAssembly.Items = manager.LoadAssembly("C:\CodingCool\Code\Projects\CecilTesting\VBTest\bin\Debug\net8.0\VBTest.dll")
+        tvAssembly.Items = manager.LoadAssembly(path)
     End Sub
 
     Private Sub tvAssembly_SelectionChanged(sender As Object, e As SelectionChangedEventArgs) Handles tvAssembly.SelectionChanged
@@ -59,4 +69,16 @@ Partial Public Class MainWindow
         End If
     End Sub
 
+    Private Async Sub btnOpen_Click(sender As Object, e As RoutedEventArgs) Handles btnOpen.Click
+        Dim files As IStorageFile() = (Await StorageProvider.OpenFilePickerAsync(New Avalonia.Platform.Storage.FilePickerOpenOptions() With {.AllowMultiple = False, .Title = "Select assembly"})).ToArray
+        If files.Any Then
+            path = files(0).Path.AbsolutePath
+            manager = New AssemblyManager
+            tvAssembly.Items = manager.LoadAssembly(path)
+        End If
+    End Sub
+
+    Private Sub btnExit_Click(sender As Object, e As RoutedEventArgs) Handles btnExit.Click
+        Close()
+    End Sub
 End Class
