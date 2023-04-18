@@ -44,14 +44,6 @@ Partial Public Class MainWindow
                             New MenuItem With {
                             .Header = "Copy",
                             .InputGesture = New KeyGesture(Key.C, KeyModifiers.Control)
-                            },
-                            New MenuItem With {
-                            .Header = "Paste",
-                            .InputGesture = New KeyGesture(Key.V, KeyModifiers.Control)
-                            },
-                            New MenuItem With {
-                            .Header = "Cut",
-                            .InputGesture = New KeyGesture(Key.X, KeyModifiers.Control)
                             }
                 }
         }
@@ -83,7 +75,7 @@ Partial Public Class MainWindow
     Private Sub MainWindow_Loaded(sender As Object, e As RoutedEventArgs) Handles Me.Loaded
         If Not File.Exists(path) Then Return
         manager = New AssemblyManager
-        tvAssembly.Items = manager.LoadAssembly(path)
+        tvAssembly.Items = {manager.LoadAssembly(path)}
     End Sub
 
     Private Sub tvAssembly_SelectionChanged(sender As Object, e As SelectionChangedEventArgs) Handles tvAssembly.SelectionChanged
@@ -111,6 +103,10 @@ Partial Public Class MainWindow
                 If eDef IsNot Nothing Then
                     tree = manager.DecompileEventAsSyntaxTree(eDef)
                 End If
+                Dim modDef As ModuleDefinition = TryCast(item.Tag, ModuleDefinition)
+                If modDef IsNot Nothing Then
+                    tree = manager.DecompileModuleAsSyntaxTree(modDef)
+                End If
                 txtCode.Text = tree.GetRoot.NormalizeWhitespace().ToFullString
             End If
         End If
@@ -121,7 +117,7 @@ Partial Public Class MainWindow
         If files.Any Then
             path = files(0).Path.AbsolutePath
             manager = New AssemblyManager
-            tvAssembly.Items = manager.LoadAssembly(path)
+            tvAssembly.Items = {manager.LoadAssembly(path)}
         End If
     End Sub
 

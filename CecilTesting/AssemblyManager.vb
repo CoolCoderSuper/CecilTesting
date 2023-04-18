@@ -61,7 +61,7 @@ Public Class AssemblyManager
         Next
     End Sub
 
-    Public Function LoadAssembly(path As String) As List(Of AssemblyItem)
+    Public Function LoadAssembly(path As String) As AssemblyItem
         Dim results As New List(Of AssemblyItem)
         Dim modDef As ModuleDefinition = ModuleDefinition.ReadModule(path)
         For Each tDef As TypeDefinition In modDef.Types
@@ -116,7 +116,8 @@ Public Class AssemblyManager
             LoadDefinitions(node, tDef, _showAll)
             LoadNestedTypes(node, tDef, _showAll)
         Next
-        Return results
+        Dim nMod As New AssemblyItem With {.Key = modDef.FileName, .Text = modDef.Name, .Children = results, .Tag = modDef}
+        Return nMod
     End Function
 
 #End Region
@@ -130,6 +131,16 @@ Public Class AssemblyManager
     End Function
     'TODO: Modifiers
     'TODO: Events
+
+    Public Function DecompileModuleAsSyntaxTree(mDef As ModuleDefinition) As Microsoft.CodeAnalysis.SyntaxTree
+        Dim sb As New StringBuilder
+        For Each tDef As TypeDefinition In mDef.Types
+            sb.AppendLine(DecompileTypeAsString(tDef))
+        Next
+        Dim tree As Microsoft.CodeAnalysis.SyntaxTree = Microsoft.CodeAnalysis.VisualBasic.SyntaxFactory.ParseSyntaxTree(sb.ToString)
+        tree = SyntaxHelpers.MergeNamespaces(tree)
+        Return tree
+    End Function
 
     Public Function DecompileTypeAsString(tDef As TypeDefinition) As String
         Dim sb As New StringBuilder
