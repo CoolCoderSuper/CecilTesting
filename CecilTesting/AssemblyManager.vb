@@ -1,5 +1,4 @@
-﻿Imports System.IO
-Imports System.Text
+﻿Imports System.Text
 Imports Mono.Cecil
 Imports Mono.Cecil.Cil
 
@@ -9,47 +8,87 @@ Public Class AssemblyManager
     ReadOnly _showAll As Boolean = False
 
 #Region "UI"
-    Private Sub LoadNestedTypes(node As TreeNode, tDef As TypeDefinition, showAll As Boolean)
+    Private Sub LoadNestedTypes(node As AssemblyItem, tDef As TypeDefinition, showAll As Boolean)
         For Each t As TypeDefinition In tDef.NestedTypes
             Dim sbName As New StringBuilder(t.Name)
             If t.HasGenericParameters Then
                 sbName.Remove(sbName.Length - 2, 2)
                 DecompileGenericParameters(t.GenericParameters, sbName)
             End If
-            Dim n As TreeNode = node.Nodes.Add(t.Name, sbName.ToString)
-            n.Tag = t
+            Dim n As New AssemblyItem With {
+                .Key = t.Name,
+                .Text = sbName.ToString,
+                .Tag = t
+            }
+            node.Children.Add(n)
             LoadDefinitions(n, t, showAll)
             LoadNestedTypes(n, t, showAll)
         Next
     End Sub
 
-    Private Shared Sub LoadDefinitions(node As TreeNode, tDef As TypeDefinition, showAll As Boolean)
+    Private Shared Sub LoadDefinitions(node As AssemblyItem, tDef As TypeDefinition, showAll As Boolean)
         For Each mDef As MethodDefinition In tDef.Methods.Where(Function(x) showAll OrElse Not x.IsGetter AndAlso Not x.IsSetter AndAlso Not x.IsAddOn AndAlso Not x.IsRemoveOn)
-            node.Nodes.Add(mDef.Name, mDef.Name).Tag = mDef
+            Dim n As New AssemblyItem With {
+                .Key = mDef.Name,
+                .Text = mDef.Name,
+                .Tag = mDef
+            }
+            node.Children.Add(n)
         Next
         For Each pDef As PropertyDefinition In tDef.Properties
-            node.Nodes.Add(pDef.Name, pDef.Name).Tag = pDef
+            Dim n As New AssemblyItem With {
+                .Key = pDef.Name,
+                .Text = pDef.Name,
+                .Tag = pDef
+            }
+            node.Children.Add(n)
         Next
         For Each eDef As EventDefinition In tDef.Events
-            node.Nodes.Add(eDef.Name, eDef.Name).Tag = eDef
+            Dim n As New AssemblyItem With {
+                .Key = eDef.Name,
+                .Text = eDef.Name,
+                .Tag = eDef
+            }
+            node.Children.Add(n)
         Next
         For Each fDef As FieldDefinition In tDef.Fields
-            node.Nodes.Add(fDef.Name, fDef.Name).Tag = fDef
+            Dim n As New AssemblyItem With {
+                .Key = fDef.Name,
+                .Text = fDef.Name,
+                .Tag = fDef
+            }
+            node.Children.Add(n)
         Next
     End Sub
 
-    Public Sub LoadAssembly(path As String, tv As TreeView)
-        tv.Nodes.Clear()
+    Public Function LoadAssembly(path As String) As List(Of AssemblyItem)
+        Dim results As New List(Of AssemblyItem)
         Dim modDef As ModuleDefinition = ModuleDefinition.ReadModule(path)
         For Each tDef As TypeDefinition In modDef.Types
             Dim names As String() = tDef.FullName.Split(".")
-            Dim node As TreeNode = Nothing
+            Dim node As AssemblyItem = Nothing
             For i = 0 To names.Length - 2
                 Dim name As String = names(i)
                 If node Is Nothing Then
-                    node = If(tv.Nodes.ContainsKey(name), tv.Nodes(name), tv.Nodes.Add(name, name))
+                    If results.Any(Function(x) x.Key = name) Then
+                        node = results.First(Function(x) x.Key = name)
+                    Else
+                        node = New AssemblyItem With {
+                            .Key = name,
+                            .Text = name
+                        }
+                        results.Add(node)
+                    End If
                 Else
-                    node = If(node.Nodes.ContainsKey(name), node.Nodes(name), node.Nodes.Add(name, name))
+                    If node.Children.Any(Function(x) x.Key = name) Then
+                        node = node.Children.First(Function(x) x.Key = name)
+                    Else
+                        node = New AssemblyItem With {
+                            .Key = name,
+                            .Text = name
+                        }
+                        node.Children.Add(node)
+                    End If
                 End If
             Next
             Dim sbName As New StringBuilder(names.Last)
@@ -57,12 +96,28 @@ Public Class AssemblyManager
                 sbName.Remove(sbName.Length - 2, 2)
                 DecompileGenericParameters(tDef.GenericParameters, sbName)
             End If
-            node = If(node Is Nothing, tv.Nodes.Add(names.Last, sbName.ToString), node.Nodes.Add(names.Last, sbName.ToString))
-            node.Tag = tDef
+            If node Is Nothing Then
+                Dim n As New AssemblyItem With {
+                    .Key = names.Last,
+                    .Text = sbName.ToString,
+                    .Tag = tDef
+                }
+                results.Add(n)
+                node = n
+            Else
+                Dim n As New AssemblyItem With {
+                    .Key = names.Last,
+                    .Text = sbName.ToString,
+                    .Tag = tDef
+                }
+                node.Children.Add(n)
+                node = n
+            End If
             LoadDefinitions(node, tDef, _showAll)
             LoadNestedTypes(node, tDef, _showAll)
         Next
-    End Sub
+        Return results
+    End Function
 
 #End Region
 
@@ -74,6 +129,7 @@ Public Class AssemblyManager
         Return sb.ToString()
     End Function
     'TODO: Modifiers
+    'TODO: Events
 
     Public Function DecompileTypeAsString(tDef As TypeDefinition) As String
         Dim sb As New StringBuilder
@@ -256,7 +312,6 @@ Public Class AssemblyManager
     End Function
 
     Public Function DecompileEventAsString(eDef As EventDefinition) As String
-        'TODO: Test
         Dim sb As New StringBuilder
         DecompileAttributes(eDef.CustomAttributes, sb)
         sb.Append($"Event {eDef.Name} As {GetFriendlyName(eDef.EventType)}")

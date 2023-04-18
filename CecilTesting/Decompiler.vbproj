@@ -1,42 +1,24 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk">
 
   <PropertyGroup>
-    <OutputType>WinExe</OutputType>
+    <OutputType>Exe</OutputType>
     <TargetFrameworks>net8.0-windows;net472</TargetFrameworks>
-    <StartupObject>Sub Main</StartupObject>
-    <UseWindowsForms>true</UseWindowsForms>
-    <MyType>WindowsForms</MyType>
+	  <TrimMode>copyused</TrimMode>
+	  <BuiltInComInteropSupport>true</BuiltInComInteropSupport>
   </PropertyGroup>
 
   <ItemGroup>
-    <Import Include="System.Data" />
-    <Import Include="System.Drawing" />
-    <Import Include="System.Windows.Forms" />
-  </ItemGroup>
-
-  <ItemGroup>
-    <PackageReference Include="ICSharpCode.TextEditor" Version="3.2.1.6466" />
     <PackageReference Include="Microsoft.CodeAnalysis.VisualBasic" Version="4.5.0" />
     <PackageReference Include="Mono.Cecil" Version="0.11.4" />
+	  <TrimmableAssembly Include="Avalonia.Themes.Fluent" />
+	  <TrimmableAssembly Include="Avalonia.Themes.Default" />
+	  <PackageReference Include="Avalonia" Version="11.0.0-preview5" />
+	  <PackageReference Include="Avalonia.Desktop" Version="11.0.0-preview5" />
+	  <PackageReference Condition="'$(Configuration)' == 'Debug'" Include="Avalonia.Diagnostics" Version="11.0.0-preview5" />
   </ItemGroup>
 
   <ItemGroup>
     <ProjectReference Include="..\VBTest\VBTest.vbproj" />
-  </ItemGroup>
-
-  <ItemGroup>
-    <Compile Update="My Project\Application.Designer.vb">
-      <DesignTime>True</DesignTime>
-      <AutoGen>True</AutoGen>
-      <DependentUpon>Application.myapp</DependentUpon>
-    </Compile>
-  </ItemGroup>
-
-  <ItemGroup>
-    <None Update="My Project\Application.myapp">
-      <Generator>MyApplicationCodeGenerator</Generator>
-      <LastGenOutput>Application.Designer.vb</LastGenOutput>
-    </None>
     <None Update="VBNET.xshd">
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
     </None>
