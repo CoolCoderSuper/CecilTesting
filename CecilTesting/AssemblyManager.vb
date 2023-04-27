@@ -3,6 +3,13 @@ Imports Mono.Cecil
 Imports Mono.Cecil.Cil
 
 'TODO: Look into using dnLib
+'TODO: References, Base Types, etc. like in dnSpy
+'TODO: Search
+'TODO: Code navigation
+'TODO: Comments giving metadata info
+'TODO: PE
+'TODO: Module and assembly decompilation
+'TODO: IL decompilation
 Public Class AssemblyManager
 
     ReadOnly _showAll As Boolean = False
@@ -219,6 +226,19 @@ Public Class AssemblyManager
     Public Function DecompileMethodAsString(mDef As MethodDefinition) As String
         Dim sb As New StringBuilder
         DecompileAttributes(mDef.CustomAttributes, sb)
+        'If Not mDef.DeclaringType.IsInterface Then
+        '    If mDef.Attributes.HasFlag(MethodAttributes.Public) Then sb.Append("Public ")
+        '    If mDef.Attributes.HasFlag(MethodAttributes.Private) Then sb.Append("Private ")
+        '    If mDef.Attributes.HasFlag(MethodAttributes.Static) Then sb.Append("Shared ")
+        '    If mDef.Attributes.HasFlag(MethodAttributes.Assembly) Then sb.Append("Friend ")
+        '    If mDef.Attributes.HasFlag(MethodAttributes.FamANDAssem) Then sb.Append("Private Protected ")
+        '    If mDef.Attributes.HasFlag(MethodAttributes.Family) Then sb.Append("Protected ")
+        '    If mDef.Attributes.HasFlag(MethodAttributes.FamORAssem) Then sb.Append("Protected Friend ")
+        '    If mDef.Attributes.HasFlag(MethodAttributes.Virtual) Then sb.Append("Overridable ")
+        'End If
+        If mDef.CustomAttributes.Any(Function(x) x.AttributeType.FullName = "System.Runtime.CompilerServices.AsyncStateMachineAttribute") Then
+            sb.Append("Async ")
+        End If
         Dim isSub As Boolean = mDef.ReturnType.FullName = "System.Void"
         Dim methodDefiner As String = If(isSub, "Sub", "Function")
         Dim methodName As String = If(mDef.IsConstructor, "New", mDef.Name)
@@ -244,7 +264,7 @@ Public Class AssemblyManager
             Dim methodType As String = GetFriendlyName(mDef.ReturnType)
             sb.AppendLine($" As {methodType}")
         End If
-        If Not mDef.DeclaringType.IsInterface Then
+        If Not mDef.DeclaringType.IsInterface AndAlso mDef.HasBody Then
             sb.Append(DecompileMethodBodyAsString(mDef.Body))
             sb.AppendLine($"End {methodDefiner}")
         End If
@@ -256,7 +276,26 @@ Public Class AssemblyManager
     End Function
 
     Public Function DecompileMethodBodyAsString(mBody As MethodBody) As String
-        Return ""
+        Dim sb As New StringBuilder
+        For Each inst As Instruction In mBody.Instructions
+            If inst.OpCode = OpCodes.Call Then
+                Dim mRef As MethodReference = inst.Operand
+                Dim arg As Instruction = inst.Previous
+                Dim i As Integer = 0
+                Dim args As New List(Of Instruction)
+                While arg IsNot Nothing
+                    If mRef.Parameters.Count = i Then Exit While
+                    args.Add(arg)
+                    arg = arg.Previous
+                    i += i
+                End While
+                args.RemoveAll(Function(x) x.OpCode = OpCodes.Nop)
+                sb.AppendLine($"{GetFriendlyName(mRef.DeclaringType)}.{mRef.Name}()")
+            Else
+                sb.AppendLine($"'{inst}")
+            End If
+        Next
+        Return sb.ToString()
     End Function
 
     Public Function DecompileMethodBodyAsSyntaxTree(mBody As MethodBody) As Microsoft.CodeAnalysis.SyntaxTree

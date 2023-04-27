@@ -6,6 +6,7 @@
         mc:Ignorable="d" d:DesignWidth="700" d:DesignHeight="500"
         x:Class="Decompiler.MainWindow"
         Title="Decompiler"
+		WindowState="Maximized"
 		Width="700" Height="500">
 	<Grid ColumnDefinitions="200,4,*" RowDefinitions="20,*">
 		<Menu>
@@ -25,7 +26,6 @@
 		<GridSplitter Grid.Column="1"  Grid.Row="1"/>
 		<AvalonEdit:TextEditor Name="txtCode"
 							   FontFamily="Cascadia Code,Consolas,Menlo,Monospace"
-                               Margin="5"
                                HorizontalScrollBarVisibility="Auto"
                                VerticalScrollBarVisibility="Visible"
 							   IsReadOnly="True"
